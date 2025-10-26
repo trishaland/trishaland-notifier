@@ -1,10 +1,17 @@
 import express from "express";
-import cron from "node-cron";
 import fetch from "node-fetch";
 import { GoogleAuth } from "google-auth-library";
 
 const app = express();
 app.use(express.json());
+
+// 🩵 Izinkan request dari situs GitHub Pages kamu
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "https://trishaland.github.io");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
 
 // 🔒 Firebase credentials
 const serviceAccount = {
@@ -22,10 +29,10 @@ const auth = new GoogleAuth({
 // 🧠 Simpan token user sementara
 let userTokens = [];
 
-// 🌐 Base URL repo kamu (ganti <username> jadi username GitHub kamu)
+// 🌐 Base URL gambar di repo kamu
 const BASE_URL = "https://raw.githubusercontent.com/trishaland/trishaland-notifier/main/";
 
-// ✨ Random message pool (10 variasi tiap kategori)
+// ✨ Pesan acak per kategori
 const messages = {
   sarapan: [
     "Selamat pagi! Yuk sarapan bareng Trisha 💙",
@@ -65,23 +72,20 @@ const messages = {
   ]
 };
 
-// 🎴 Ambil gambar random sesuai kategori
+// 🔄 Ambil gambar acak dari repo
 function getRandomImage(type) {
-  const num = Math.floor(Math.random() * 15) + 1; // dari 1–15
-  if (type === "sarapan") return `${BASE_URL}sarapan${num}.jpg`;
-  if (type === "sabtu") return `${BASE_URL}sabtu${num}.jpg`;
-  if (type === "sore") return `${BASE_URL}sore${num}.jpg`;
-  return `${BASE_URL}sarapan1.jpg`;
+  const num = Math.floor(Math.random() * 15) + 1;
+  return `${BASE_URL}${type}${num}.jpg`;
 }
 
-// 🗨️ Ambil pesan random sesuai kategori
+// 🔄 Ambil pesan acak
 function getRandomMessage(type) {
   const pool = messages[type] || ["Hai dari Trisha! 💙"];
   const randomIndex = Math.floor(Math.random() * pool.length);
   return pool[randomIndex];
 }
 
-// ✅ Endpoint simpan token
+// ✅ Simpan token pengguna
 app.post("/save-token", (req, res) => {
   const { token } = req.body;
   if (token && !userTokens.includes(token)) {
@@ -90,7 +94,7 @@ app.post("/save-token", (req, res) => {
   res.json({ success: true, total: userTokens.length });
 });
 
-// 🔔 Kirim notifikasi
+// 🔔 Kirim notifikasi FCM
 async function sendNotification(title, body, imageUrl) {
   try {
     const accessToken = await auth.getAccessToken();
@@ -129,26 +133,36 @@ async function sendNotification(title, body, imageUrl) {
   }
 }
 
-// 🕒 Jadwal otomatis
-// Sarapan → tiap hari 06:00
-cron.schedule("0 6 * * *", () => {
-  const img = getRandomImage("sarapan");
-  const msg = getRandomMessage("sarapan");
-  sendNotification("#SarapanFotoOshi 🍳", msg, img);
+// 🕒 Endpoint otomatis dipanggil Cron
+app.get("/", async (req, res) => {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const day = now.getDay(); // 0 = Minggu, 6 = Sabtu
+
+  console.log(`⏰ Dipanggil oleh Vercel Cron: ${hour}:${minute} | Hari ke-${day}`);
+
+  // 06:00 setiap hari
+  if (hour === 6 && minute === 0) {
+    if (day === 6) {
+      const img = getRandomImage("sabtu");
+      const msg = getRandomMessage("sabtu");
+      await sendNotification("#Trishaturday ☀️", msg, img);
+    } else {
+      const img = getRandomImage("sarapan");
+      const msg = getRandomMessage("sarapan");
+      await sendNotification("#SarapanFotoOshi 🍳", msg, img);
+    }
+  }
+
+  // 15:30 setiap hari
+  if (hour === 15 && minute === 30) {
+    const img = getRandomImage("sore");
+    const msg = getRandomMessage("sore");
+    await sendNotification("#TrishAfternoon 🍵", msg, img);
+  }
+
+  res.send("🚀 TrishaLand Notifier aktif dan otomatis sesuai jadwal!");
 });
 
-// Trishaturday → tiap Sabtu 06:00
-cron.schedule("0 6 * * 6", () => {
-  const img = getRandomImage("sabtu");
-  const msg = getRandomMessage("sabtu");
-  sendNotification("#Trishaturday ☀️", msg, img);
-});
-
-// TrishAfternoon → tiap hari 15:30
-cron.schedule("30 15 * * *", () => {
-  const img = getRandomImage("sore");
-  const msg = getRandomMessage("sore");
-  sendNotification("#TrishAfternoon 🍵", msg, img);
-});
-
-app.listen(3000, () => console.log("🚀 TrishaLand Notifier aktif di port 3000"));
+export default app;
