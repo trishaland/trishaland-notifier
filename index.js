@@ -151,4 +151,8 @@ cron.schedule("30 15 * * *", () => {
   sendNotification("#TrishAfternoon 🍵", msg, img);
 });
 
+app.get("/", (req, res) => {
+  res.send("🚀 TrishaLand Notifier aktif dan jalan normal!");
+});
+
 app.listen(3000, () => console.log("🚀 TrishaLand Notifier aktif di port 3000"));
