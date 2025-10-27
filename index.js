@@ -133,6 +133,14 @@ async function sendNotification(title, body, imageUrl) {
   }
 }
 
+// 🚀 Endpoint manual untuk tes notifikasi
+app.get("/test-notif", async (req, res) => {
+  const img = getRandomImage("sarapan"); // bisa ganti "sore" atau "sabtu"
+  const msg = getRandomMessage("sarapan");
+  await sendNotification("Tes Notifikasi 💙", msg, img);
+  res.send("✅ Notifikasi test berhasil dikirim (cek browser kamu!)");
+});
+
 // 🕒 Endpoint otomatis dipanggil Cron
 app.get("/", async (req, res) => {
   const now = new Date();
