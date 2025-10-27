@@ -94,7 +94,7 @@ app.post("/save-token", (req, res) => {
   res.json({ success: true, total: userTokens.length });
 });
 
-// 🔔 Kirim notifikasi FCM
+// 🔔 Kirim notifikasi FCM (versi fix)
 async function sendNotification(title, body, imageUrl) {
   try {
     const accessToken = await auth.getAccessToken();
@@ -110,12 +110,20 @@ async function sendNotification(title, body, imageUrl) {
             image: imageUrl
           },
           webpush: {
+            notification: {
+              title,
+              body,
+              icon: imageUrl || "https://trishaland.github.io/home/TrishaLand.webp",
+              click_action: "https://trishaland.github.io/home/"
+            },
             fcm_options: {
               link: "https://trishaland.github.io/home/"
             }
           }
         }
       };
+
+      console.log("🧩 Message dikirim ke Firebase:", JSON.stringify(message, null, 2));
 
       await fetch(url, {
         method: "POST",
@@ -135,7 +143,7 @@ async function sendNotification(title, body, imageUrl) {
 
 // 🚀 Endpoint manual untuk tes notifikasi
 app.get("/test-notif", async (req, res) => {
-  const img = getRandomImage("sarapan"); // bisa ganti "sore" atau "sabtu"
+  const img = getRandomImage("sarapan"); // bisa diganti "sore" atau "sabtu"
   const msg = getRandomMessage("sarapan");
   await sendNotification("Tes Notifikasi 💙", msg, img);
   res.send("✅ Notifikasi test berhasil dikirim (cek browser kamu!)");
